@@ -1,3 +1,5 @@
+// Randomized index testing
+
 Random.setRandomSeed();
 
 t = db.test_index_check9;
@@ -18,26 +20,48 @@ var fields = [ 'a', 'b', 'c', 'd', 'e' ];
 n = Random.randInt( 5 ) + 1;
 var idx = sort();
 
+var chars = "abcdefghijklmnopqrstuvwxyz";
+var alphas = []
+for( var i = 0; i < n; ++i ) {
+    alphas.push( Random.rand() > 0.5 );
+}
+    
 t.ensureIndex( idx );
 
 function obj() {
     var ret = {};
     for( var i = 0; i < n; ++i ) {
-        ret[ fields[ i ] ] = r();
+        ret[ fields[ i ] ] = r( alphas[ i ] );
     }
     return ret;
 }
 
-function r() {
-    return Random.randInt( 10 );
+function r( alpha ) {
+    if ( !alpha ) {
+        return Random.randInt( 10 );
+    } else {
+        var len = Random.randInt( 10 );
+        buf = "";
+        for( var i = 0; i < len; ++i ) {
+            buf += chars.charAt( Random.randInt( chars.length ) );
+        }
+        return buf;
+    }
 }
 
 function check() {
+    var v = t.validate();
+    if ( !t.valid ) {
+        printjson( t );
+        assert( t.valid );
+    }
     var spec = {};
     for( var i = 0; i < n; ++i ) {
         if ( Random.rand() > 0.5 ) {
-            var bounds = [ r(), r() ];
-            bounds.sort();
+            var bounds = [ r( alphas[ i ] ), r( alphas[ i ] ) ];
+            if ( bounds[ 0 ] > bounds[ 1 ] ) {
+                bounds.reverse();
+            }
 	    var s = {};
 	    if ( Random.rand() > 0.5 ) {
 		s[ "$gte" ] = bounds[ 0 ];
@@ -53,13 +77,13 @@ function check() {
         } else {
             var vals = []
             for( var j = 0; j < Random.randInt( 15 ); ++j ) {
-                vals.push( r() );
+                vals.push( r( alphas[ i ] ) );
             }
             spec[ fields[ i ] ] = { $in: vals };
         }
     }
     s = sort();
-    c1 = t.find( spec, { _id:null } ).sort( s ).toArray();
+    c1 = t.find( spec, { _id:null } ).sort( s ).hint( idx ).toArray();
     c2 = t.find( spec ).sort( s ).explain().nscanned;
     c3 = t.find( spec, { _id:null } ).sort( s ).hint( {$natural:1} ).toArray();
     //    assert.eq( c1, c3, "spec: " + tojson( spec ) + ", sort: " + tojson( s ) );

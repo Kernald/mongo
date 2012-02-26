@@ -1,6 +1,6 @@
 // tests sharding with replica sets
 
-s = new ShardingTest( "rs1" , 3 , 1 , 2 , { rs : true , chunksize : 1 } )
+s = new ShardingTest( "rs1" , 3 /* numShards */, 1 /* verboseLevel */, 2 /* numMongos */, { rs : true , chunksize : 1 } )
 
 s.adminCommand( { enablesharding : "test" } );
 
@@ -23,7 +23,7 @@ db.getLastError();
 s.adminCommand( { shardcollection : "test.foo" , key : { _id : 1 } } );
 assert.lt( 20 , s.config.chunks.count()  , "setup2" );
 
-function diff(){
+function diff1(){
     var x = s.chunkCounts( "foo" );
     var total = 0;
     var min = 1000000000;
@@ -40,15 +40,30 @@ function diff(){
     return max - min;
 }
 
-assert.lt( 20 , diff() , "big differential here" );
-print( diff() )
+assert.lt( 20 , diff1() , "big differential here" );
+print( diff1() )
+
+{
+    // quick test for SERVER-2686
+    var mydbs = db.getMongo().getDBs().databases;
+    for ( var i=0; i<mydbs.length; i++ ) {
+        assert( mydbs[i].name != "local" , "mongos listDatabases can't return local" );
+    }
+}
+
 
 assert.soon( function(){
-    var d = diff();
+    var d = diff1();
     return d < 5;
-} , "balance didn't happen" , 1000 * 60 * 3 , 5000 );
+} , "balance didn't happen" , 1000 * 60 * 6 , 5000 );
 
 s.config.settings.update( { _id: "balancer" }, { $set : { stopped: true } } , true );
+
+sleep( 1000 );
+
+while ( sh.isBalancerRunning() ){
+    sleep( 1000 );
+}
 
 for ( i=0; i<s._rs.length; i++ ){
     r = s._rs[i];
@@ -56,7 +71,7 @@ for ( i=0; i<s._rs.length; i++ ){
     x = r.test.getHashes( "test" );
     print( r.url + "\t" + tojson( x ) )
     for ( j=0; j<x.slaves.length; j++ )
-        assert.eq( x.master.md5 , x.slaves[j].md5 , "hashes same for: " + r.url + " slave: " + j );
+        assert.eq( x.master.md5 , x.slaves[j].md5 , "hashes not same for: " + r.url + " slave: " + j );
 }
 
 

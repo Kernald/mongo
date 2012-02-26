@@ -18,6 +18,16 @@ db.getSisterDB( "admin" ).addUser( "super", "super" );
 
 assert.throws( function() { t.findOne() }, [], "read without login" );
 
+print("make sure we can't run certain commands w/out auth");
+var errmsg = "need to login";
+assert.eq(db.runCommand({eval : "function() { return 1; }"}).errmsg, errmsg);
+assert.eq(db.runCommand({getLastError : 1}).errmsg, errmsg);
+assert.eq(db.runCommand({whatsmyuri : 1}).errmsg, errmsg);
+assert.eq(db.runCommand({availableQueryOptions : 1}).errmsg, errmsg);
+assert.eq(db.adminCommand({getLog : "global"}).errmsg, errmsg);
+assert.eq(db.runCommand({getPrevError : 1}).errmsg, errmsg);
+assert.eq(db.runCommand({resetError : 1}).errmsg, errmsg);
+
 assert( db.auth( "eliot" , "eliot" ) , "auth failed" );
 
 for( i = 0; i < 999; ++i ) {
@@ -25,6 +35,11 @@ for( i = 0; i < 999; ++i ) {
 }
 assert.eq( 999, t.count() , "A1" );
 assert.eq( 999, t.find().toArray().length , "A2" );
+
+db.setProfilingLevel( 2 );
+t.count();
+db.setProfilingLevel( 0 );
+assert.lt( 0 , db.system.profile.find( { user : "eliot" } ).count() , "AP1" )
 
 assert.eq( 999, db.eval( function() { return db[ "jstests_auth_auth1" ].count(); } ) , "A3" );
 db.eval( function() { db[ "jstests_auth_auth1" ].save( {i:999} ) } );
@@ -68,6 +83,6 @@ if ( db.runCommand( "features" ).readlock ){
               initial: { count: 0 }
             };
     
-    assert.throws( function() { return t.group( p ) }, "write reduce didn't fail" );
+    assert.throws( function() { return t.group( p ) }, null , "write reduce didn't fail" );
 }
 

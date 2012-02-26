@@ -1,6 +1,11 @@
 // features2.js
 
 s = new ShardingTest( "features2" , 2 , 1 , 1 );
+
+// The counts and the tests for "on-num-shards" only works for previous assumptions in balancer 
+// behavior and assumes migrations do not occur during count() commands.
+s.stopBalancer()
+
 s.adminCommand( { enablesharding : "test" } );
 
 a = s._connections[0].getDB( "test" );
@@ -92,10 +97,12 @@ r = function( key , values ){
 
 doMR = function( n ){
     print(n);
-
-    var res = db.mr.mapReduce( m , r );
+    
+    // on-disk
+    
+    var res = db.mr.mapReduce( m , r , "smr1_out" );
     printjson( res );
-    assert.eq( new NumberLong(4) , res.counts.input , "MR T0 " + n );
+    assert.eq( 4 , res.counts.input , "MR T0 " + n );
 
     var x = db[res.result];
     assert.eq( 3 , x.find().count() , "MR T1 " + n );
@@ -103,11 +110,26 @@ doMR = function( n ){
     var z = {};
     x.find().forEach( function(a){ z[a._id] = a.value.count; } );
     assert.eq( 3 , Object.keySet( z ).length , "MR T2 " + n );
-    assert.eq( 2 , z.a , "MR T2 " + n );
-    assert.eq( 3 , z.b , "MR T2 " + n );
-    assert.eq( 3 , z.c , "MR T2 " + n );
+    assert.eq( 2 , z.a , "MR T3 " + n );
+    assert.eq( 3 , z.b , "MR T4 " + n );
+    assert.eq( 3 , z.c , "MR T5 " + n );
 
     x.drop();
+
+    // inline
+
+    var res = db.mr.mapReduce( m , r , { out : { inline : 1 } } );
+    printjson( res );
+    assert.eq( 4 , res.counts.input , "MR T6 " + n );
+
+    var z = {};
+    res.find().forEach( function(a){ z[a._id] = a.value.count; } );
+    printjson( z );
+    assert.eq( 3 , Object.keySet( z ).length , "MR T7 " + n ) ;
+    assert.eq( 2 , z.a , "MR T8 " + n );
+    assert.eq( 3 , z.b , "MR T9 " + n );
+    assert.eq( 3 , z.c , "MR TA " + n );
+
 }
 
 doMR( "before" );
@@ -124,7 +146,7 @@ s.adminCommand({movechunk:'test.mr', find:{x:3}, to: s.getServer('test').name } 
 
 doMR( "after extra split" );
 
-cmd = { mapreduce : "mr" , map : "emit( " , reduce : "fooz + " };
+cmd = { mapreduce : "mr" , map : "emit( " , reduce : "fooz + " , out : "broken1" };
 
 x = db.runCommand( cmd );
 y = s._connections[0].getDB( "test" ).runCommand( cmd );
@@ -155,5 +177,12 @@ catch ( e ){
 }
 
 assert.eq( x , y , "assert format" )
+
+// isMaster and query-wrapped-command
+isMaster = db.runCommand({isMaster:1});
+assert( isMaster.ismaster );
+assert.eq( 'isdbgrid', isMaster.msg );
+assert.eq( isMaster, db.runCommand({query: {isMaster:1}}) );
+assert.eq( isMaster, db.runCommand({$query: {isMaster:1}}) );
 
 s.stop();

@@ -1,5 +1,4 @@
 // Election when master fails and remaining nodes are an arbiter and a slave.
-// Note that in this scenario, the arbiter needs two votes.
 
 doTest = function( signal ) {
 
@@ -9,11 +8,11 @@ doTest = function( signal ) {
     print(tojson(nodes));
 
     var conns = replTest.startSet();
-    var r = replTest.initiate({"_id" : "unicomplex", 
+    var r = replTest.initiate({"_id" : "unicomplex",
                 "members" : [
-                             {"_id" : 0, "host" : nodes[0] },
-                             {"_id" : 1, "host" : nodes[1], "arbiterOnly" : true, "votes": 2},
-                             {"_id" : 2, "host" : nodes[2] }]});
+                    {"_id" : 0, "host" : nodes[0] },
+                    {"_id" : 1, "host" : nodes[1], "arbiterOnly" : true, "votes": 1, "priority" : 0},
+                    {"_id" : 2, "host" : nodes[2] }]});
 
     // Make sure we have a master
     var master = replTest.getMaster();
@@ -25,9 +24,15 @@ doTest = function( signal ) {
         return res.myState == 7;
     }, "Aribiter failed to initialize.");
 
+    var result = conns[1].getDB("admin").runCommand({isMaster : 1});
+    assert(result.arbiterOnly);
+    assert(!result.passive);
+
     // Wait for initial replication
     master.getDB("foo").foo.insert({a: "foo"});
     replTest.awaitReplication();
+
+    assert( ! conns[1].getDB( "admin" ).runCommand( "ismaster" ).secondary , "arbiter shouldn't be secondary" )
 
     // Now kill the original master
     mId = replTest.getNodeId( master );

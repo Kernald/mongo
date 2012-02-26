@@ -9,7 +9,7 @@ db[ baseName ].save( {} );
 assert.eq( 1, db[ baseName ].count() , "A : " + tojson( db[baseName].find().toArray() ) );
 
 checkDir = function( dir ) {
-    db.runCommand( {fsync:1} );
+    db.adminCommand( {fsync:1} );
     files = listFiles( dir );
     found = false;
     for( f in files ) {
@@ -22,6 +22,8 @@ checkDir = function( dir ) {
 
     files = listFiles( dir + baseName );
     for( f in files ) {
+        if ( files[f].isDirectory )
+            continue;
         assert( new RegExp( baseName + "/" + baseName + "." ).test( files[ f ].name ) , "B dir:" + dir + " f: " + f );
     }
 }
@@ -60,3 +62,5 @@ assert( m.getDBs().totalSize > 0, "bad size calc" );
 db.dropDatabase();
 files = listFiles( dbpath );
 files.forEach( function( f ) { assert( !new RegExp( baseName ).test( f.name ), "drop database - dir not cleared" ); } );
+
+print("SUCCESS directoryperdb.js");

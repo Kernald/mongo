@@ -1,6 +1,8 @@
 # Ubuntu upstart file at /etc/init/mongodb.conf
 
-limit nofile 20000
+limit nofile 20000 20000
+
+kill timeout 300 # wait 300s between SIGTERM and SIGKILL.
 
 pre-start script
     mkdir -p /var/lib/mongodb/

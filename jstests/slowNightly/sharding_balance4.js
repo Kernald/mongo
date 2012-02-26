@@ -1,6 +1,8 @@
 // sharding_balance4.js
 
-s = new ShardingTest( "slow_sharding_balance4" , 2 , 2 , 1 , { chunksize : 1 } )
+// check that doing updates done during a migrate all go to the right place
+
+s = new ShardingTest( "slow_sharding_balance4" , 2 , 1 , 1 , { chunksize : 1 } )
 
 s.adminCommand( { enablesharding : "test" } );
 s.adminCommand( { shardcollection : "test.foo" , key : { _id : 1 } } );
@@ -36,9 +38,8 @@ for ( i=0; i<N*10; i++ ){
 }
 db.getLastError();
 
-s.printChunks( "test.foo" )
-
-for ( var i=0; i<10; i++ ){
+for ( var i=0; i<50; i++ ){
+    s.printChunks( "test.foo" )
     if ( check( "initial:" + i , true ) )
         break;
     sleep( 5000 )
@@ -56,9 +57,15 @@ function check( msg , dontAssert ){
         if ( z && z.x == e )
             continue;
         
-        if ( dontAssert )
+        if ( dontAssert ){
+            if ( z )
+                delete z.s;
+            print( "not asserting for key failure: " + x + " want: " + e + " got: " + tojson(z) )
             return false;
+        }
 
+        // we will assert past this point but wait a bit to see if it is because the missing update
+        // was being held in the writeback roundtrip
         sleep( 10000 );
         
         var y = db.foo.findOne( { _id : parseInt( x ) } )
@@ -66,6 +73,8 @@ function check( msg , dontAssert ){
         if ( y ){
             delete y.s;
         }
+
+        s.printChunks( "test.foo" )
         
         assert( z , "couldn't find : " + x + " y:" + tojson(y) + " e: " + e + " " + msg )
         assert.eq( e , z.x , "count for : " + x + " y:" + tojson(y) + " " + msg )
@@ -74,15 +83,24 @@ function check( msg , dontAssert ){
     return true;
 }
 
-function diff(){
+function diff1(){
     var myid = doUpdate( false )
     var le = db.getLastErrorCmd();
+
     if ( le.err )
         print( "ELIOT ELIOT : " + tojson( le ) + "\t" + myid );
 
+    if ( ! le.updatedExisting || le.n != 1 ) {
+        print( "going to assert for id: " + myid + " correct count is: " + counts[myid] + " db says count is: " + db.foo.findOne( { _id : myid } ) );
+    }
+
+    assert( le.updatedExisting , "GLE diff myid: " + myid + " 1: " + tojson(le) )
+    assert.eq( 1 , le.n , "GLE diff myid: " + myid + " 2: " + tojson(le) )
+
+
     if ( Math.random() > .99 ){
         db.getLastError()
-        check(); // SERVER-1430  TODO
+        check( "random late check" ); // SERVER-1430 
     }
 
     var x = s.chunkCounts( "foo" )
@@ -96,12 +114,12 @@ function sum(){
     return x.shard0000 + x.shard0001;
 }
 
-assert.lt( 20 , diff() ,"initial load" );
-print( diff() )
+assert.lt( 20 , diff1() ,"initial load" );
+print( diff1() )
 
 assert.soon( function(){
     
-    var d = diff();
+    var d = diff1();
     return d < 5;
 } , "balance didn't happen" , 1000 * 60 * 3 , 1 );
     

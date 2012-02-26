@@ -21,6 +21,7 @@ assert.eq( 3 , db.foo.find().length() , "after partitioning count failed" );
 s.adminCommand( shardCommand );
 
 cconfig = s.config.collections.findOne( { _id : "test.foo" } );
+assert( cconfig , "why no collection entry for test.foo" )
 delete cconfig.lastmod
 delete cconfig.dropped
 assert.eq( cconfig , { _id : "test.foo" , key : { num : 1 } , unique : false } , "Sharded content" );
@@ -33,6 +34,10 @@ assert( si );
 assert.eq( si.ns , "test.foo" );
 
 assert.eq( 3 , db.foo.find().length() , "after sharding, no split count failed" );
+
+// SERVER-4284
+s.getDB( "foo bar" ).blah.insert( { x : 1 } )
+assert.isnull( s.config.databases.findOne( { _id : "foo bar" } ) )
 
 
 s.stop();

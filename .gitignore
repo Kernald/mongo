@@ -1,8 +1,10 @@
-.jsdbshell
-.dbshell
-.sconsign.dblite
-.sconf_temp
-perf.data
+/build
+/.jsdbshell
+/.dbshell
+/.sconsign.dblite
+/.sconf_temp
+/perf.data
+/massif.out.*
 
 *~
 *.swp
@@ -16,7 +18,6 @@ perf.data
 *.ncb
 *.idb 
 *.obj 
-*/*.obj
 *.opt 
 *.pch 
 *.jsh
@@ -35,21 +36,21 @@ perf.data
 *.psess
 *#
 .#*
-shell/mongo.cpp
-shell/mongo-server.cpp
 
-*/Debug/
-*/*/Debug/
-*/Release/
-*/*/Release/
-db/.gdb*
-db/makefile.local
-db/_ReSharper.db
+/src/mongo/*/*Debug/
+/src/mongo/*/*/*Debug/
+/src/mongo/*/*Release/
+/src/mongo/*/*/*Release/
+/src/mongo/*/ipch
+/src/mongo/*/*/ipch
+/src/mongo/db/.gdb*
+/src/mongo/db/makefile.local
+/src/mongo/db/_ReSharper.db
 config.log
 settings.py
-buildinfo.cpp
 tags
 TAGS
+failfile.smoke
 
 #temp dirs
 dump
@@ -62,47 +63,48 @@ docs/doxygen
 scratch
 
 # binaries
-mongo
-mongod
-mongogrid
-mongos
+/mongo
+/mongod
+/mongogrid
+/mongos
 
-mongodump
-mongorestore
+/mongodump
+/mongorestore
 
-mongofiles
-mongoexport
+/mongofiles
+/mongoexport
 
-mongoimport
-mongosniff
-mongobridge
-mongostat
-bsondump
+/mongoimport
+/mongosniff
+/mongobridge
+/mongostat
+/mongotop
+/mongooplog
+/mongoperf
+/bsondump
 
 *.tgz
 *.zip
 *.tar.gz
 
-mongodb-*
-mongo-cxx-driver-*
-
 #libs
-libmongoclient.*
-libmongotestfiles.*
-libmongoshellfiles.*
+/libmongoclient.*
+/libmongotestfiles.*
+/libmongoshellfiles.*
 
 # examples
-firstExample
-secondExample
-whereExample
-bsondemo
+/firstExample
+/secondExample
+/whereExample
+/bsondemo
+/rsExample
 
 #tests
-test
-authTest
-perftest
-clientTest
-httpClientTest
+/test
+/authTest
+/perftest
+/clientTest
+/httpClientTest
 
 #debian
 build-stamp
@@ -120,4 +122,17 @@ debian/mongodb
 *.creator.user
 *.files
 *.includes
+*.orig
 
+
+# old things that should be removed
+# maybe remove this mid 2012
+src/third_party/js-1.7/jscpucfg
+src/third_party/js-1.7/jskwgen
+src/mongo/buildinfo.cpp
+src/mongo/shell/mongo-server.cpp
+src/mongo/shell/mongo.cpp
+src/third_party/js-1.7/jsautocfg.h
+src/third_party/js-1.7/jsautokw.h
+buildinfo.cpp
+/.settings/
